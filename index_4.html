@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Home Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: { brand: { red: '#ef2b2d', yellow: '#ffd23f' } }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root { --red: #ef2b2d; --yellow: #ffd23f; }
+    body {
+      background: #000;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    /* Weich schwebende Farbflächen im Hintergrund (rot / gelb auf Schwarz) */
+    .blob { position: fixed; border-radius: 9999px; filter: blur(120px); z-index: 0; pointer-events: none; }
+    .blob-1 { width: 520px; height: 520px; background: #b3121b; opacity: .38; top: -180px; left: -140px; animation: float 22s ease-in-out infinite; }
+    .blob-2 { width: 460px; height: 460px; background: #c79a05; opacity: .2; bottom: -160px; right: -120px; animation: float 26s ease-in-out infinite reverse; }
+    .blob-3 { width: 320px; height: 320px; background: #ef2b2d; opacity: .14; top: 48%; left: 58%; animation: float 30s ease-in-out infinite; }
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(50px, 40px) scale(1.1); }
+    }
+
+    .glass {
+      background: linear-gradient(145deg, rgba(255,255,255,.065), rgba(255,255,255,.012));
+      border: 1px solid rgba(255,255,255,.085);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      box-shadow: 0 8px 40px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.06);
+      border-radius: 1.75rem;
+    }
+    .glass-inner {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 1.1rem;
+    }
+    .time-gradient {
+      background: linear-gradient(180deg, #fff 35%, rgba(255,255,255,.6));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .tabular { font-variant-numeric: tabular-nums; }
+
+    /* Überschriften mit rotem Akzentpunkt */
+    .h2 { display: flex; align-items: center; gap: .6rem; }
+    .h2::before {
+      content: ""; width: .45rem; height: .45rem; border-radius: 9999px;
+      background: var(--red); box-shadow: 0 0 12px var(--red);
+    }
+
+    /* Buttons */
+    .btn-primary {
+      color: #fff; font-weight: 500;
+      background: linear-gradient(135deg, #ff4448, #c4121a);
+      box-shadow: 0 4px 18px rgba(239,43,45,.28);
+    }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .icon-btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .3rem .65rem; border-radius: 9999px; font-size: .75rem; cursor: pointer;
+      color: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.04); transition: all .2s;
+    }
+    .icon-btn:hover { color: #fff; border-color: rgba(255,210,63,.45); }
+    .icon-btn .icon { display: inline-block; font-size: .95rem; line-height: 1; }
+    .icon-btn.busy { pointer-events: none; color: var(--yellow); }
+    .icon-btn.busy .icon { animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Checkbox */
+    .check {
+      appearance: none; -webkit-appearance: none; width: 22px; height: 22px; flex-shrink: 0;
+      border-radius: 8px; border: 1.5px solid rgba(255,255,255,.3); cursor: pointer;
+      transition: all .2s; display: grid; place-content: center;
+    }
+    .check:checked { background: var(--red); border-color: transparent; }
+    .check:checked::after { content: "✓"; color: #fff; font-size: 14px; font-weight: 700; }
+
+    /* Filter-Chips (Tabs) */
+    .chip {
+      padding: .3rem .8rem; border-radius: 9999px; font-size: .75rem; white-space: nowrap; cursor: pointer;
+      color: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03); transition: all .2s;
+    }
+    .chip:hover { color: #fff; }
+    .chip.active { color: #000; font-weight: 600; border-color: transparent; background: var(--yellow); }
+
+    /* Scrollbar */
+    .scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 9999px; }
+    .no-bar { scrollbar-width: none; }
+    .no-bar::-webkit-scrollbar { display: none; }
+
+    .fade-in { animation: fade .4s ease both; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .soft { transition: opacity .35s ease; }
+    .soft.dim { opacity: .4; }
+
+    input::placeholder { color: rgba(255,255,255,.35); }
+    .field:focus { border-color: rgba(239,43,45,.55); }
+
+    /* Nachrichten */
+    a.news-item { transition: background .2s, border-color .2s; }
+    a.news-item:hover { background: rgba(255,255,255,.075); border-color: rgba(255,210,63,.3); }
+    .tile { background: radial-gradient(circle at 30% 20%, rgba(255,210,63,.2), rgba(239,43,45,.14) 60%, rgba(255,255,255,.03)); }
+
+    /* Aufklappbare Märkte */
+    details > summary { list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+  </style>
+</head>
+<body class="font-sans text-white antialiased">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <main class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-8 lg:py-12 grid gap-5 lg:grid-cols-6">
+
+    <!-- 1. UHR -->
+    <section class="glass p-8 lg:p-10 lg:col-span-4 flex flex-col justify-center">
+      <p id="greeting" class="text-sm uppercase tracking-[.3em] text-brand-yellow mb-3"></p>
+      <div class="flex items-baseline gap-3">
+        <h1 id="time" class="time-gradient tabular font-extralight leading-none tracking-tight text-7xl sm:text-8xl lg:text-9xl">00:00</h1>
+        <span id="seconds" class="tabular text-2xl sm:text-3xl font-light text-brand-red">00</span>
+      </div>
+      <p id="date" class="mt-5 text-lg sm:text-xl font-light text-white/70"></p>
+    </section>
+
+    <!-- 2. WETTER -->
+    <section class="glass p-7 lg:col-span-2 flex flex-col">
+      <form id="cityForm" class="flex gap-2 mb-5">
+        <input id="cityInput" type="text" placeholder="Stadt suchen…" autocomplete="off"
+          class="field glass-inner flex-1 min-w-0 px-4 py-2 text-sm outline-none transition" />
+        <button class="glass-inner px-3 text-white/70 hover:text-white hover:bg-white/10 transition" aria-label="Suchen">🔍</button>
+      </form>
+      <div id="weatherBody" class="flex-1 flex flex-col">
+        <p class="text-white/40 text-sm m-auto">Lade Wetter…</p>
+      </div>
+    </section>
+
+    <!-- 3. TO-DO -->
+    <section class="glass p-7 lg:col-span-3 flex flex-col">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="h2 text-lg font-medium">Aufgaben</h2>
+        <span id="todoCount" class="text-xs text-white/50 glass-inner px-3 py-1"></span>
+      </div>
+      <form id="todoForm" class="flex gap-2 mb-4">
+        <input id="todoInput" type="text" maxlength="120" placeholder="Neue Aufgabe…" autocomplete="off"
+          class="field glass-inner flex-1 min-w-0 px-4 py-3 text-sm outline-none transition" />
+        <button class="btn-primary px-5 rounded-[1.1rem] text-sm active:scale-95 transition">Hinzufügen</button>
+      </form>
+      <ul id="todoList" class="scroll space-y-2 overflow-y-auto max-h-80 pr-1"></ul>
+      <button id="clearDone" class="mt-4 self-end text-xs text-white/40 hover:text-white/80 transition hidden">Erledigte entfernen</button>
+    </section>
+
+    <!-- 4. ABFAHRTEN (GVH / Üstra / S-Bahn) -->
+    <section class="glass p-7 lg:col-span-3 flex flex-col">
+      <div class="flex items-start justify-between gap-3 mb-4">
+        <div class="min-w-0">
+          <h2 class="h2 text-lg font-medium">Abfahrten</h2>
+          <p id="stopName" class="text-xs text-white/50 truncate mt-0.5 ml-[1.05rem]">&nbsp;</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <span id="transitUpdated" class="text-[11px] text-white/40"></span>
+          <button id="transitRefresh" class="icon-btn" aria-label="Abfahrten aktualisieren" title="Aktualisieren"><span class="icon">↻</span></button>
+        </div>
+      </div>
+      <div class="flex gap-2 mb-3">
+        <button class="chip active" data-filter="all">Alle</button>
+        <button class="chip" data-filter="sbahn">S-Bahn</button>
+        <button class="chip" data-filter="bus">Bus</button>
+      </div>
+      <form id="stopForm" class="flex gap-2 mb-4">
+        <input id="stopInput" type="text" placeholder="Andere Haltestelle suchen…" autocomplete="off"
+          class="field glass-inner flex-1 min-w-0 px-4 py-2 text-sm outline-none transition" />
+        <button class="glass-inner px-3 text-white/70 hover:text-white hover:bg-white/10 transition" aria-label="Suchen">🔍</button>
+      </form>
+      <ul id="transitList" class="soft space-y-2 flex-1"></ul>
+    </section>
+
+    <!-- 5. NACHRICHTEN -->
+    <section class="glass p-7 lg:col-span-4 flex flex-col">
+      <div class="flex items-center justify-between gap-3 mb-4">
+        <h2 class="h2 text-lg font-medium">Nachrichten</h2>
+        <div class="flex items-center gap-2">
+          <span id="newsUpdated" class="text-[11px] text-white/40"></span>
+          <button id="newsRefresh" class="icon-btn" aria-label="Nachrichten aktualisieren" title="Aktualisieren"><span class="icon">↻</span></button>
+        </div>
+      </div>
+      <div id="newsTabs" class="flex gap-2 mb-4 overflow-x-auto no-bar"></div>
+      <ul id="newsList" class="soft scroll space-y-3 overflow-y-auto max-h-[40rem] pr-1"></ul>
+    </section>
+
+    <!-- 6. SPRUCH DES TAGES -->
+    <section class="glass p-7 lg:col-span-2 flex flex-col">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="h2 text-lg font-medium">Spruch des Tages</h2>
+        <button id="quoteNext" class="icon-btn" aria-label="Anderer Spruch" title="Anderer Spruch"><span class="icon">↻</span></button>
+      </div>
+      <div id="quoteBody" class="my-auto fade-in"></div>
+    </section>
+
+    <!-- 7. MÄRKTE (aufklappbar) -->
+    <details id="markets" class="glass lg:col-span-6 group">
+      <summary class="flex items-center justify-between gap-3 cursor-pointer select-none p-7">
+        <div class="flex items-baseline gap-3">
+          <h2 class="h2 text-lg font-medium">Märkte</h2>
+          <span class="text-xs text-white/40">Bitcoin &amp; Aktien · zum Aufklappen tippen</span>
+        </div>
+        <span class="text-brand-yellow transition-transform duration-300 group-open:rotate-180">▾</span>
+      </summary>
+      <div class="px-7 pb-7">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <span id="marketsUpdated" class="text-[11px] text-white/40"></span>
+          <button id="marketsRefresh" class="icon-btn" aria-label="Kurse aktualisieren"><span class="icon">↻</span><span>Aktualisieren</span></button>
+        </div>
+        <div id="marketsGrid" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"></div>
+        <p class="text-[11px] text-white/30 mt-4">Tagesverlauf (5-Minuten-Kurse), gestrichelt = Schlusskurs des Vortags bzw. Kurs vor 24 Std. Aktien in US-Dollar, ggf. zeitverzögert. Keine Anlageberatung.</p>
+      </div>
+    </details>
+  </main>
+
+  <script>
+  (() => {
+    const $ = (id) => document.getElementById(id);
+    const store = {
+      get(key, fallback) {
+        try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+        catch { return fallback; }
+      },
+      set(key, value) {
+        try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+      }
+    };
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    // Holt Text von einer URL. Erst direkt, bei Fehler (z. B. fehlende CORS-Freigabe) über öffentliche Proxys.
+    async function fetchText(url, { proxy = true, timeout = 10000 } = {}) {
+      const attempts = [url];
+      if (proxy) {
+        attempts.push('https://api.allorigins.win/raw?url=' + encodeURIComponent(url));
+        attempts.push('https://corsproxy.io/?url=' + encodeURIComponent(url));
+      }
+      let lastErr = new Error('Keine Antwort');
+      for (const u of attempts) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), timeout);
+        try {
+          const res = await fetch(u, { signal: ctrl.signal });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const text = await res.text();
+          if (!text || !text.trim()) throw new Error('Leere Antwort');
+          return text;
+        } catch (e) { lastErr = e; }
+        finally { clearTimeout(timer); }
+      }
+      throw lastErr;
+    }
+
+    // Button dreht sich, Liste wird sanft abgedunkelt, solange geladen wird
+    function setBusy(btnId, listEl, on) {
+      const b = $(btnId);
+      if (b) b.classList.toggle('busy', on);
+      if (listEl) listEl.classList.toggle('dim', on);
+    }
+
+    const timeAgo = (date) => {
+      if (!date || isNaN(date)) return '';
+      const min = Math.round((Date.now() - date.getTime()) / 60000);
+      if (min < 1) return 'gerade eben';
+      if (min < 60) return `vor ${min} Min.`;
+      const h = Math.round(min / 60);
+      if (h < 24) return `vor ${h} Std.`;
+      return `vor ${Math.round(h / 24)} T.`;
+    };
+    const hhmm = (date) => date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    const sameDay = (a, b) => a.toDateString() === b.toDateString();
+    const standText = (date) => 'Stand ' + (sameDay(date, new Date())
+      ? hhmm(date)
+      : date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) + ' ' + hhmm(date));
+
+    /* ---------- 1. UHR ---------- */
+    function tick() {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      $('time').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      $('seconds').textContent = pad(now.getSeconds());
+      $('date').textContent = now.toLocaleDateString('de-DE', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+      });
+      const h = now.getHours();
+      $('greeting').textContent =
+        h < 5 ? 'Gute Nacht' : h < 11 ? 'Guten Morgen' : h < 17 ? 'Guten Tag' : h < 22 ? 'Guten Abend' : 'Gute Nacht';
+    }
+    tick();
+    setInterval(tick, 1000);
+
+    /* ---------- 2. WETTER (Open-Meteo) ---------- */
+    const WMO = {
+      0: ['Klar', '☀️', '🌙'], 1: ['Überwiegend klar', '🌤️', '🌙'], 2: ['Teils bewölkt', '⛅', '☁️'],
+      3: ['Bedeckt', '☁️', '☁️'], 45: ['Nebel', '🌫️', '🌫️'], 48: ['Reifnebel', '🌫️', '🌫️'],
+      51: ['Leichter Nieselregen', '🌦️', '🌧️'], 53: ['Nieselregen', '🌦️', '🌧️'], 55: ['Starker Nieselregen', '🌧️', '🌧️'],
+      56: ['Gefrierender Nieselregen', '🌧️', '🌧️'], 57: ['Gefrierender Nieselregen', '🌧️', '🌧️'],
+      61: ['Leichter Regen', '🌦️', '🌧️'], 63: ['Regen', '🌧️', '🌧️'], 65: ['Starkregen', '🌧️', '🌧️'],
+      66: ['Gefrierender Regen', '🌧️', '🌧️'], 67: ['Gefrierender Regen', '🌧️', '🌧️'],
+      71: ['Leichter Schneefall', '🌨️', '🌨️'], 73: ['Schneefall', '❄️', '❄️'], 75: ['Starker Schneefall', '❄️', '❄️'],
+      77: ['Schneegriesel', '🌨️', '🌨️'], 80: ['Regenschauer', '🌦️', '🌧️'], 81: ['Regenschauer', '🌧️', '🌧️'],
+      82: ['Heftige Schauer', '⛈️', '⛈️'], 85: ['Schneeschauer', '🌨️', '🌨️'], 86: ['Starke Schneeschauer', '❄️', '❄️'],
+      95: ['Gewitter', '⛈️', '⛈️'], 96: ['Gewitter mit Hagel', '⛈️', '⛈️'], 99: ['Gewitter mit Hagel', '⛈️', '⛈️']
+    };
+    const wmo = (code, isDay = 1) => {
+      const e = WMO[code] || ['Unbekannt', '❔', '❔'];
+      return { text: e[0], icon: isDay ? e[1] : e[2] };
+    };
+
+    let city = store.get('dash_city', { name: 'Hannover', lat: 52.3759, lon: 9.732 });
+
+    async function loadWeather() {
+      const body = $('weatherBody');
+      try {
+        const url = 'https://api.open-meteo.com/v1/forecast'
+          + `?latitude=${city.lat}&longitude=${city.lon}`
+          + '&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day'
+          + '&daily=weather_code,temperature_2m_max,temperature_2m_min'
+          + '&timezone=auto&forecast_days=5';
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const d = await res.json();
+        const c = d.current;
+        const cur = wmo(c.weather_code, c.is_day);
+
+        const days = d.daily.time.map((t, i) => {
+          const w = wmo(d.daily.weather_code[i]);
+          const label = i === 0 ? 'Heute'
+            : new Date(t + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short' });
+          return `
+            <div class="glass-inner flex-1 py-3 text-center">
+              <div class="text-[11px] text-white/50 mb-1">${label}</div>
+              <div class="text-xl mb-1">${w.icon}</div>
+              <div class="tabular text-xs">${Math.round(d.daily.temperature_2m_max[i])}°</div>
+              <div class="tabular text-xs text-white/40">${Math.round(d.daily.temperature_2m_min[i])}°</div>
+            </div>`;
+        }).join('');
+
+        const anim = body.dataset.loaded ? '' : 'fade-in'; // nur beim ersten Laden einblenden, nicht bei jedem Update
+        body.innerHTML = `
+          <div class="${anim} flex flex-col flex-1">
+            <p class="text-sm text-white/60">${escapeHtml(city.name)}</p>
+            <div class="flex items-center justify-between mt-1">
+              <div class="tabular text-6xl font-extralight leading-none">${Math.round(c.temperature_2m)}°</div>
+              <div class="text-6xl">${cur.icon}</div>
+            </div>
+            <p class="mt-2 text-white/80">${cur.text}</p>
+            <p class="text-xs text-white/45 mt-1">
+              Gefühlt ${Math.round(c.apparent_temperature)}° · Luftfeuchte ${c.relative_humidity_2m}% · Wind ${Math.round(c.wind_speed_10m)} km/h
+            </p>
+            <div class="flex gap-2 mt-auto pt-5">${days}</div>
+          </div>`;
+        body.dataset.loaded = '1';
+      } catch (err) {
+        if (!body.dataset.loaded) {
+          body.innerHTML = `<p class="text-sm text-white/50 m-auto text-center">Wetter konnte nicht geladen werden.<br><span class="text-xs">Bitte Internetverbindung prüfen.</span></p>`;
+        }
+      }
+    }
+
+    $('cityForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const q = $('cityInput').value.trim();
+      if (!q) return;
+      try {
+        const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=de`);
+        const data = await res.json();
+        if (!data.results || !data.results.length) {
+          $('cityInput').value = '';
+          $('cityInput').placeholder = 'Nicht gefunden – nochmal versuchen';
+          return;
+        }
+        const r = data.results[0];
+        city = { name: r.name + (r.country_code ? ', ' + r.country_code : ''), lat: r.latitude, lon: r.longitude };
+        store.set('dash_city', city);
+        $('cityInput').value = '';
+        $('cityInput').placeholder = 'Stadt suchen…';
+        loadWeather();
+      } catch {
+        $('cityInput').placeholder = 'Suche fehlgeschlagen';
+      }
+    });
+
+    loadWeather();
+    setInterval(loadWeather, 15 * 60 * 1000);
+
+    /* ---------- 3. TO-DO ---------- */
+    let todos = store.get('dash_todos', []);
+
+    function renderTodos() {
+      const list = $('todoList');
+      list.innerHTML = '';
+      if (!todos.length) {
+        list.innerHTML = '<li class="text-sm text-white/35 text-center py-8">Alles erledigt 🎉</li>';
+      }
+      todos.forEach((t) => {
+        const li = document.createElement('li');
+        li.className = 'glass-inner flex items-center gap-3 px-4 py-3 fade-in';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'check';
+        cb.checked = t.done;
+        cb.addEventListener('change', () => { t.done = cb.checked; save(); });
+
+        const span = document.createElement('span');
+        span.className = 'flex-1 text-sm break-words min-w-0 ' + (t.done ? 'line-through text-white/35' : '');
+        span.textContent = t.text;
+
+        const del = document.createElement('button');
+        del.className = 'text-white/30 hover:text-brand-red transition text-lg leading-none px-1';
+        del.setAttribute('aria-label', 'Löschen');
+        del.textContent = '×';
+        del.addEventListener('click', () => { todos = todos.filter((x) => x.id !== t.id); save(); });
+
+        li.append(cb, span, del);
+        list.appendChild(li);
+      });
+      const open = todos.filter((t) => !t.done).length;
+      $('todoCount').textContent = `${open} offen`;
+      $('clearDone').classList.toggle('hidden', !todos.some((t) => t.done));
+    }
+
+    function save() { store.set('dash_todos', todos); renderTodos(); }
+
+    $('todoForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = $('todoInput').value.trim();
+      if (!text) return;
+      todos.unshift({ id: Date.now(), text, done: false });
+      $('todoInput').value = '';
+      save();
+    });
+    $('clearDone').addEventListener('click', () => { todos = todos.filter((t) => !t.done); save(); });
+    renderTodos();
+
+    /* ---------- 4. ABFAHRTEN (EFA der Region Hannover: GVH / Üstra / S-Bahn) ---------- */
+    // Aktualisiert wird nur beim Öffnen der Seite und per Klick auf ↻ – nicht automatisch.
+    const EFA = 'https://www.efa.de/efa';
+    let stop = store.get('dash_stop', { id: 'de:03241:5678', name: 'Barsinghausen, Bahnhof' });
+    let transitFilter = 'all';
+    let transitData = null; // null = noch nicht geladen, 'error' = Fehler, sonst Array
+    let transitTime = null;
+
+    function parseDeparture(ev) {
+      const tr = ev.transportation || {};
+      const planned = new Date(ev.departureTimePlanned);
+      const est = new Date(ev.departureTimeEstimated || ev.departureTimePlanned);
+      const prodName = (tr.product && tr.product.name) || '';
+      const cls = tr.product && tr.product.class;
+      const kind = (cls === 1 || /s-bahn/i.test(prodName)) ? 'sbahn'
+        : (cls === 6 || cls === 5 || /bus/i.test(prodName)) ? 'bus' : 'other';
+      return {
+        kind,
+        line: tr.disassembledName || tr.number || tr.name || '?',
+        dest: (tr.destination && tr.destination.name) || '',
+        planned, est,
+        delay: Math.round((est - planned) / 60000),
+        platform: (ev.location && ev.location.properties && ev.location.properties.platform) || '',
+        cancelled: Array.isArray(ev.realtimeStatus) && ev.realtimeStatus.includes('TRIP_CANCELLED')
+      };
+    }
+
+    async function loadTransit() {
+      $('stopName').textContent = stop.name;
+      setBusy('transitRefresh', $('transitList'), true);
+      try {
+        const url = `${EFA}/XML_DM_REQUEST?outputFormat=rapidJSON&type_dm=stop&name_dm=${encodeURIComponent(stop.id)}`
+          + '&mode=direct&useRealtime=1&limit=24&locationServerActive=1&coordOutputFormat=WGS84%5Bdd.ddddd%5D';
+        const data = JSON.parse(await fetchText(url));
+        transitData = (data.stopEvents || []).map(parseDeparture)
+          .filter((d) => !isNaN(d.est))
+          .sort((a, b) => a.est - b.est);
+        transitTime = new Date();
+        $('transitUpdated').textContent = 'Stand ' + hhmm(transitTime);
+        $('transitUpdated').classList.remove('text-brand-red');
+      } catch (e) {
+        if (Array.isArray(transitData)) {
+          // Alte Liste bleiben lassen, nur Hinweis zeigen
+          $('transitUpdated').textContent = 'Update fehlgeschlagen · Stand ' + hhmm(transitTime);
+          $('transitUpdated').classList.add('text-brand-red');
+        } else {
+          transitData = 'error';
+        }
+      }
+      renderTransit();
+      setBusy('transitRefresh', $('transitList'), false);
+    }
+
+    function renderTransit() {
+      const ul = $('transitList');
+      ul.innerHTML = '';
+      const msg = (t) => { ul.innerHTML = `<li class="text-sm text-white/40 text-center py-8">${t}</li>`; };
+      if (transitData === null) return msg('Lade Abfahrten…');
+      if (transitData === 'error') return msg('Abfahrten konnten nicht geladen werden.<br><span class="text-xs">Mit ↻ nochmal versuchen.</span>');
+      const rows = transitData.filter((d) => transitFilter === 'all' || d.kind === transitFilter).slice(0, 8);
+      if (!rows.length) return msg('Keine Abfahrten gefunden.');
+
+      const chipCls = {
+        sbahn: 'bg-brand-yellow/15 text-brand-yellow',
+        bus: 'bg-brand-red/15 text-brand-red',
+        other: 'bg-white/10 text-white/70'
+      };
+      rows.forEach((d) => {
+        const delayBadge = d.cancelled
+          ? '<span class="text-brand-red">fällt aus</span>'
+          : d.delay > 0 ? `<span class="text-brand-yellow">+${d.delay} Min.</span>` : '';
+        const li = document.createElement('li');
+        li.className = 'glass-inner flex items-center gap-3 px-4 py-3';
+        li.innerHTML = `
+          <span class="${chipCls[d.kind]} min-w-[3.1rem] text-center text-xs font-semibold rounded-lg px-2 py-1">${escapeHtml(d.line)}</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm truncate ${d.cancelled ? 'line-through text-white/40' : ''}">${escapeHtml(d.dest)}</div>
+            <div class="text-[11px] text-white/40">${d.platform ? escapeHtml(d.platform) : 'Abfahrt'}</div>
+          </div>
+          <div class="text-right tabular">
+            <div class="text-sm">${hhmm(d.est)}</div>
+            <div class="text-[11px] h-4">${delayBadge}</div>
+          </div>`;
+        ul.appendChild(li);
+      });
+    }
+
+    document.querySelectorAll('[data-filter]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        transitFilter = btn.dataset.filter;
+        document.querySelectorAll('[data-filter]').forEach((b) => b.classList.toggle('active', b === btn));
+        renderTransit();
+      });
+    });
+    $('transitRefresh').addEventListener('click', loadTransit);
+
+    $('stopForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const q = $('stopInput').value.trim();
+      if (!q) return;
+      try {
+        const url = `${EFA}/XML_STOPFINDER_REQUEST?outputFormat=rapidJSON&type_sf=any&name_sf=${encodeURIComponent(q)}&locationServerActive=1&coordOutputFormat=WGS84%5Bdd.ddddd%5D`;
+        const data = JSON.parse(await fetchText(url));
+        const stops = (data.locations || []).filter((l) => l.type === 'stop');
+        if (!stops.length) {
+          $('stopInput').value = '';
+          $('stopInput').placeholder = 'Nicht gefunden – nochmal versuchen';
+          return;
+        }
+        stops.sort((a, b) => (b.isBest - a.isBest) || (b.matchQuality - a.matchQuality));
+        stop = { id: stops[0].id, name: stops[0].name };
+        store.set('dash_stop', stop);
+        $('stopInput').value = '';
+        $('stopInput').placeholder = 'Andere Haltestelle suchen…';
+        transitData = null;
+        renderTransit();
+        loadTransit();
+      } catch {
+        $('stopInput').placeholder = 'Suche fehlgeschlagen';
+      }
+    });
+
+    renderTransit();
+    loadTransit();
+
+    /* ---------- 5. NACHRICHTEN (RSS) ---------- */
+    const FEEDS = [
+      { id: 'tagesschau', name: 'Tagesschau', url: 'https://www.tagesschau.de/infoservices/alle-meldungen-100~rss2.xml' },
+      { id: 'spiegel',    name: 'Spiegel',    url: 'https://www.spiegel.de/schlagzeilen/index.rss' },
+      { id: 'zeit',       name: 'ZEIT',       url: 'https://newsfeed.zeit.de/index' },
+      { id: 'faz',        name: 'FAZ',        url: 'https://www.faz.net/rss/aktuell/' },
+      { id: 'sz',         name: 'Süddeutsche', url: 'https://rss.sueddeutsche.de/rss/Topthemen' }
+    ];
+    let newsSource = store.get('dash_news_source', 'tagesschau');
+    if (!FEEDS.some((f) => f.id === newsSource)) newsSource = FEEDS[0].id;
+    const newsCache = {}; // id -> { items, ts } oder { error: true }
+
+    // Themen-Emojis anhand von Schlagwörtern in der Überschrift
+    const TOPICS = [
+      [/krieg|ukraine|russland|militär|gaza|israel|iran|nato|rakete|drohne|waffen|soldat|angriff/i, '🪖', 'Krieg & Konflikte'],
+      [/polizei|festnahme|mord|verdächtig|prozess|urteil|gericht|anklage|tote\b|unfall|brand|feuer|messer/i, '🚨', 'Polizei & Justiz'],
+      [/bundestag|regierung|kanzler|merz|minister|koalition|wahl|partei|spd|cdu|csu|grüne|afd|bundesrat|trump|präsident|parlament|eu-|brüssel/i, '🏛️', 'Politik'],
+      [/dax|börse|aktie|inflation|konjunktur|wirtschaft|zins|dollar|konzern|arbeitsmarkt|insolvenz|steuer|haushalt|preise|unternehmen/i, '📈', 'Wirtschaft'],
+      [/energie|strom|\bgas\b|atom|solar|windkraft|\böl\b|heizung|kernkraft/i, '⚡', 'Energie'],
+      [/fußball|bundesliga|tennis|olympia|formel 1|handball|basketball|champions league|sport|dfb|\bspiel|trainer|\b(wm|em)\b/i, '⚽', 'Sport'],
+      [/wetter|sturm|unwetter|hitze|frost|schnee|hochwasser|klima|überschwemmung|orkan|regen/i, '🌦️', 'Wetter & Klima'],
+      [/\bki\b|künstliche intelligenz|openai|google|apple|microsoft|tesla|software|internet|cyber|hacker|smartphone|chip|nvidia|\btech/i, '💻', 'Technik'],
+      [/gesundheit|krankheit|impf|klinik|arzt|medizin|virus|krebs|pflege|corona/i, '🩺', 'Gesundheit'],
+      [/bahn|flug|auto|verkehr|stau|lufthansa|streik|autobahn|\bzug\b/i, '🚆', 'Verkehr'],
+      [/forscher|studie|wissenschaft|nasa|raumfahrt|weltraum|mars|\bmond\b|entdeck/i, '🔬', 'Wissenschaft'],
+      [/film|kino|musik|konzert|theater|\bbuch|kunst|serie|festival|oscar|\bstar\b/i, '🎬', 'Kultur']
+    ];
+    const topicOf = (title) => {
+      for (const [re, emoji, label] of TOPICS) if (re.test(title)) return { emoji, label };
+      return { emoji: '📰', label: 'Nachrichten' };
+    };
+
+    const stripHtml = (html) => new DOMParser().parseFromString(html || '', 'text/html').body.textContent.trim();
+
+    // Bild aus dem Feed-Eintrag holen (enclosure, media:thumbnail/content oder <img> im Text)
+    function findImage(n, rawHtml) {
+      const isImgUrl = (u) => /\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i.test(u || '');
+      for (const el of n.getElementsByTagName('enclosure')) {
+        const t = el.getAttribute('type') || '', u = el.getAttribute('url') || '';
+        if (u && (/^image\//.test(t) || isImgUrl(u))) return u;
+      }
+      for (const name of ['thumbnail', 'content']) {
+        for (const el of n.getElementsByTagNameNS('*', name)) {
+          const u = el.getAttribute('url') || '';
+          const t = el.getAttribute('type') || el.getAttribute('medium') || '';
+          if (u && (name === 'thumbnail' || /image/.test(t) || isImgUrl(u))) return u;
+        }
+      }
+      const m = /<img[^>]+src=["']([^"']+)["']/i.exec(rawHtml || '');
+      return m ? m[1] : '';
+    }
+    const cleanUrl = (u) => (/^https?:\/\//i.test(u || '') ? u.replace(/^http:\/\//i, 'https://') : '');
+
+    function parseFeed(xmlText) {
+      const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+      if (doc.querySelector('parsererror')) throw new Error('Ungültiger Feed');
+      let nodes = [...doc.querySelectorAll('item')];
+      const atom = nodes.length === 0;
+      if (atom) nodes = [...doc.querySelectorAll('entry')];
+      const items = nodes.map((n) => {
+        const g = (sel) => { const el = n.querySelector(sel); return el ? el.textContent.trim() : ''; };
+        const link = atom
+          ? (((n.querySelector('link[rel="alternate"]') || n.querySelector('link')) || {}).getAttribute?.('href') || '')
+          : g('link');
+        const dateStr = g('pubDate') || g('updated') || g('published');
+        const date = dateStr ? new Date(dateStr) : null;
+        const rawDesc = g('description') || g('summary');
+        const encoded = (n.getElementsByTagNameNS('*', 'encoded')[0] || {}).textContent || '';
+        let desc = stripHtml(rawDesc);
+        if (desc.length > 170) desc = desc.slice(0, 167).trimEnd() + '…';
+        const title = stripHtml(g('title'));
+        return {
+          title, desc, date,
+          link: cleanUrl(link),
+          image: cleanUrl(findImage(n, rawDesc + ' ' + encoded)),
+          topic: topicOf(title)
+        };
+      }).filter((i) => i.title);
+      items.sort((a, b) => (b.date || 0) - (a.date || 0));
+      return items.slice(0, 15);
+    }
+
+    function renderNewsTabs() {
+      const box = $('newsTabs');
+      box.innerHTML = '';
+      FEEDS.forEach((f) => {
+        const b = document.createElement('button');
+        b.className = 'chip' + (f.id === newsSource ? ' active' : '');
+        b.textContent = f.name;
+        b.addEventListener('click', () => {
+          newsSource = f.id;
+          store.set('dash_news_source', newsSource);
+          renderNewsTabs();
+          renderNews();
+          loadNews(f.id, false);
+        });
+        box.appendChild(b);
+      });
+    }
+
+    function renderNews() {
+      const ul = $('newsList');
+      ul.innerHTML = '';
+      const msg = (t) => { ul.innerHTML = `<li class="text-sm text-white/40 text-center py-10">${t}</li>`; };
+      const entry = newsCache[newsSource];
+      if (!entry) { $('newsUpdated').textContent = ''; return msg('Lade Nachrichten…'); }
+      if (entry.error) { $('newsUpdated').textContent = ''; return msg('Dieser Feed konnte nicht geladen werden.<br><span class="text-xs">Probier einen anderen Tab oder ↻.</span>'); }
+      if (!entry.items.length) return msg('Keine Meldungen gefunden.');
+      $('newsUpdated').textContent = 'Stand ' + hhmm(new Date(entry.ts));
+      $('newsUpdated').classList.remove('text-brand-red');
+
+      entry.items.slice(0, 8).forEach((it) => {
+        const li = document.createElement('li');
+        const el = document.createElement(it.link ? 'a' : 'div');
+        el.className = 'news-item glass-inner flex gap-4 p-3';
+        if (it.link) { el.href = it.link; el.target = '_blank'; el.rel = 'noopener noreferrer'; }
+        el.innerHTML = `
+          <div class="news-thumb tile relative shrink-0 w-24 h-24 sm:w-36 sm:h-28 rounded-xl overflow-hidden grid place-content-center text-4xl">${it.topic.emoji}</div>
+          <div class="min-w-0 flex-1 flex flex-col justify-center">
+            <div class="flex items-center gap-2 text-[11px] text-white/45 mb-1">
+              <span class="text-brand-yellow">${it.topic.emoji} ${escapeHtml(it.topic.label)}</span>
+              ${it.date && !isNaN(it.date) ? `<span>·</span><span>${timeAgo(it.date)}</span>` : ''}
+            </div>
+            <div class="text-base font-medium text-white/95 leading-snug line-clamp-3">${escapeHtml(it.title)}</div>
+            ${it.desc ? `<div class="hidden sm:block text-sm text-white/45 mt-1 leading-relaxed line-clamp-2">${escapeHtml(it.desc)}</div>` : ''}
+          </div>`;
+        if (it.image) {
+          const img = new Image();
+          img.alt = '';
+          img.loading = 'lazy';
+          img.referrerPolicy = 'no-referrer';
+          img.className = 'absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500';
+          img.onload = () => img.classList.remove('opacity-0');
+          img.onerror = () => img.remove();
+          img.src = it.image;
+          el.querySelector('.news-thumb').appendChild(img);
+        }
+        li.appendChild(el);
+        ul.appendChild(li);
+      });
+    }
+
+    // Lädt nur, wenn noch nichts im Speicher ist – oder wenn man ↻ drückt (force)
+    async function loadNews(id, force) {
+      const feed = FEEDS.find((f) => f.id === id);
+      const cached = newsCache[id];
+      if (cached && cached.items && !force) { renderNews(); return; }
+      if (id === newsSource) setBusy('newsRefresh', $('newsList'), true);
+      try {
+        const items = parseFeed(await fetchText(feed.url));
+        newsCache[id] = { items, ts: Date.now() };
+      } catch (e) {
+        if (!cached || !cached.items) newsCache[id] = { error: true };
+        else if (id === newsSource) {
+          $('newsUpdated').textContent = 'Update fehlgeschlagen';
+          $('newsUpdated').classList.add('text-brand-red');
+          setBusy('newsRefresh', $('newsList'), false);
+          return;
+        }
+      }
+      if (id === newsSource) { renderNews(); setBusy('newsRefresh', $('newsList'), false); }
+    }
+
+    $('newsRefresh').addEventListener('click', () => loadNews(newsSource, true));
+    renderNewsTabs();
+    renderNews();
+    loadNews(newsSource, false);
+
+    /* ---------- 6. SPRUCH DES TAGES ---------- */
+    // Aus gemeinfreien bzw. historischen Quellen; bei antiken Zitaten ist die Zuschreibung teils unsicher.
+    const QUOTES = [
+      ['Habe Mut, dich deines eigenen Verstandes zu bedienen!', 'Immanuel Kant'],
+      ['Es ist nicht genug, zu wissen, man muss auch anwenden; es ist nicht genug, zu wollen, man muss auch tun.', 'Johann Wolfgang von Goethe'],
+      ['Auch eine Reise von tausend Meilen beginnt mit dem ersten Schritt.', 'Laotse (zugeschrieben)'],
+      ['Nichts ist so beständig wie der Wandel.', 'Heraklit (zugeschrieben)'],
+      ['Es ist nicht wenig Zeit, die wir haben, sondern es ist viel, die wir nicht nutzen.', 'Seneca'],
+      ['Wer den Hafen nicht kennt, in den er segeln will, für den ist kein Wind der richtige.', 'Seneca'],
+      ['Nicht weil es schwer ist, wagen wir es nicht, sondern weil wir es nicht wagen, ist es schwer.', 'Seneca'],
+      ['Das Glück deines Lebens hängt von der Beschaffenheit deiner Gedanken ab.', 'Marc Aurel'],
+      ['Der Mensch ist nur da ganz Mensch, wo er spielt.', 'Friedrich Schiller'],
+      ['Man muss das Unmögliche versuchen, um das Mögliche zu erreichen.', 'Hermann Hesse'],
+      ['Ohne Musik wäre das Leben ein Irrtum.', 'Friedrich Nietzsche'],
+      ['Was uns nicht umbringt, macht uns stärker.', 'Friedrich Nietzsche'],
+      ['Das Leben ist kurz, die Kunst ist lang.', 'Hippokrates'],
+      ['Mut steht am Anfang des Handelns, Glück am Ende.', 'Demokrit'],
+      ['Alles fließt.', 'Heraklit (zugeschrieben)'],
+      ['Der Zweifel ist der Weisheit Anfang.', 'René Descartes'],
+      ['Wissen ist Macht.', 'Francis Bacon'],
+      ['Wer nicht wagt, der nicht gewinnt.', 'Sprichwort'],
+      ['In der Ruhe liegt die Kraft.', 'Sprichwort'],
+      ['Wer will, findet Wege; wer nicht will, findet Gründe.', 'Sprichwort'],
+      ['Der Mensch wächst mit seinen Aufgaben.', 'Sprichwort'],
+      ['Aller Anfang ist schwer, aber jeder Anfang ist ein Anfang.', 'Sprichwort'],
+      ['Steter Tropfen höhlt den Stein.', 'Sprichwort'],
+      ['Wer die Welt bewegen will, sollte erst sich selbst bewegen.', 'Sokrates (zugeschrieben)'],
+      ['Ich weiß, dass ich nichts weiß.', 'Sokrates (zugeschrieben)'],
+      ['Die Natur macht keine Sprünge.', 'Carl von Linné'],
+      ['Man sieht die Dinge nicht, wie sie sind, sondern wie man selbst ist.', 'Talmud (zugeschrieben)'],
+      ['Eile mit Weile.', 'Augustus (zugeschrieben)'],
+      ['Wer andern gar zu viel vertraut, hat schnell auf Sand gebaut.', 'Sprichwort']
+    ];
+    const dayOfYear = () => {
+      const n = new Date();
+      return Math.floor((n - new Date(n.getFullYear(), 0, 0)) / 86400000);
+    };
+    let quoteIdx = dayOfYear() % QUOTES.length;
+    function renderQuote() {
+      const [text, author] = QUOTES[quoteIdx];
+      $('quoteBody').innerHTML = `
+        <p class="text-2xl font-light leading-snug text-white/95"><span class="text-brand-red">„</span>${escapeHtml(text)}<span class="text-brand-red">“</span></p>
+        <p class="text-xs text-brand-yellow mt-4">— ${escapeHtml(author)}</p>`;
+    }
+    $('quoteNext').addEventListener('click', () => {
+      quoteIdx = (quoteIdx + 1) % QUOTES.length;
+      renderQuote();
+    });
+    renderQuote();
+    let lastDay = new Date().getDate();
+    setInterval(() => {
+      const d = new Date().getDate();
+      if (d !== lastDay) { lastDay = d; quoteIdx = dayOfYear() % QUOTES.length; renderQuote(); }
+    }, 60 * 1000);
+
+    /* ---------- 7. MÄRKTE (Bitcoin via CoinGecko, Aktien via Yahoo Finance) ---------- */
+    const ASSETS = [
+      { id: 'btc',   name: 'Bitcoin',               sub: 'BTC / EUR', kind: 'btc',   currency: 'EUR' },
+      { id: 'nvda',  name: 'NVIDIA',                sub: 'NVDA',      kind: 'stock', currency: 'USD', symbol: 'NVDA' },
+      { id: 'googl', name: 'Alphabet (A)',          sub: 'GOOGL',     kind: 'stock', currency: 'USD', symbol: 'GOOGL' },
+      { id: 'aapl',  name: 'Apple',                 sub: 'AAPL',      kind: 'stock', currency: 'USD', symbol: 'AAPL' },
+      { id: 'ttwo',  name: 'Take-Two Interactive',  sub: 'TTWO',      kind: 'stock', currency: 'USD', symbol: 'TTWO' },
+      { id: 'tsm',   name: 'TSMC (US-ADR)',         sub: 'TSM',       kind: 'stock', currency: 'USD', symbol: 'TSM' }
+    ];
+    const marketsData = {};
+    let marketsBusy = false;
+    let marketsOpened = false;
+
+    const UP = '#34d399', DOWN = '#ff5a5f';
+
+    // Mini-Verlauf mit gestrichelter Basislinie (Vortagesschluss bzw. Kurs vor 24 Std.)
+    function sparkline(series, baseline, up, uid) {
+      if (!series || series.length < 2) return '';
+      const w = 240, h = 64, pad = 4;
+      const vals = series.map((p) => p[1]);
+      let min = Math.min(...vals), max = Math.max(...vals);
+      if (typeof baseline === 'number') { min = Math.min(min, baseline); max = Math.max(max, baseline); }
+      const range = max - min || 1;
+      const y = (v) => pad + (1 - (v - min) / range) * (h - pad * 2);
+      const pts = vals.map((v, i) => [(i / (vals.length - 1)) * w, y(v)]);
+      const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+      const color = up ? UP : DOWN;
+      const base = typeof baseline === 'number'
+        ? `<line x1="0" x2="${w}" y1="${y(baseline).toFixed(1)}" y2="${y(baseline).toFixed(1)}" stroke="rgba(255,255,255,.28)" stroke-width="1" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>`
+        : '';
+      return `
+        <svg viewBox="0 0 ${w} ${h}" class="w-full h-16" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="spark-${uid}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="${color}" stop-opacity=".3"/>
+              <stop offset="1" stop-color="${color}" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="${line} L${w} ${h} L0 ${h} Z" fill="url(#spark-${uid})"/>
+          ${base}
+          <path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        </svg>`;
+    }
+
+    const fmtMoney = (v, cur) => v.toLocaleString('de-DE', {
+      style: 'currency', currency: cur, maximumFractionDigits: v >= 1000 ? 0 : 2, minimumFractionDigits: v >= 1000 ? 0 : 2
+    });
+
+    async function fetchBtc() {
+      const res = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=eur&days=1');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const prices = (await res.json()).prices;
+      if (!prices || prices.length < 2) throw new Error('Keine Daten');
+      return { price: prices[prices.length - 1][1], prev: prices[0][1], series: prices, time: new Date(prices[prices.length - 1][0]), label: '24 Std.' };
+    }
+
+    async function fetchStock(symbol) {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m&range=1d&includePrePost=false`;
+      const data = JSON.parse(await fetchText(url));
+      const r = data.chart && data.chart.result && data.chart.result[0];
+      if (!r) throw new Error('Keine Daten');
+      const ts = r.timestamp || [];
+      const closes = (r.indicators && r.indicators.quote && r.indicators.quote[0].close) || [];
+      const series = [];
+      ts.forEach((t, i) => { if (closes[i] != null) series.push([t * 1000, closes[i]]); });
+      const meta = r.meta || {};
+      const last = series.length ? series[series.length - 1] : null;
+      const price = typeof meta.regularMarketPrice === 'number' ? meta.regularMarketPrice : (last && last[1]);
+      const prev = typeof meta.chartPreviousClose === 'number' ? meta.chartPreviousClose : meta.previousClose;
+      if (typeof price !== 'number') throw new Error('Kein Kurs');
+      const time = meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000) : new Date(last ? last[0] : Date.now());
+      return { price, prev, series, time, label: 'Heute' };
+    }
+
+    function cardHtml(a, d) {
+      const hasPrev = typeof d.prev === 'number' && d.prev > 0;
+      const diff = hasPrev ? d.price - d.prev : 0;
+      const pct = hasPrev ? (diff / d.prev) * 100 : 0;
+      const up = diff >= 0;
+      const badge = hasPrev
+        ? `<div class="tabular text-xs px-2 py-1 rounded-lg shrink-0" style="color:${up ? UP : DOWN};background:${up ? 'rgba(52,211,153,.12)' : 'rgba(255,90,95,.12)'}">${up ? '▲' : '▼'} ${Math.abs(pct).toLocaleString('de-DE', { maximumFractionDigits: 2, minimumFractionDigits: 2 })} %</div>`
+        : '';
+      const sign = diff >= 0 ? '+' : '−';
+      const absTxt = hasPrev ? `${sign}${Math.abs(diff).toLocaleString('de-DE', { maximumFractionDigits: 2, minimumFractionDigits: 2 })} ${a.currency === 'EUR' ? '€' : '$'}` : '';
+      return `
+        <div class="fade-in">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="text-sm font-medium truncate">${escapeHtml(a.name)}</div>
+              <div class="text-[11px] text-white/40">${escapeHtml(a.sub)}</div>
+            </div>
+            ${badge}
+          </div>
+          <div class="tabular text-3xl font-light tracking-tight mt-3">${fmtMoney(d.price, a.currency)}</div>
+          <div class="tabular text-[11px] text-white/40">${absTxt}${absTxt ? ' · ' : ''}${d.label} · ${standText(d.time)}</div>
+          <div class="mt-2">${sparkline(d.series, hasPrev ? d.prev : null, up, a.id)}</div>
+        </div>`;
+    }
+
+    function setCard(a, html) { const el = $('mk-' + a.id); if (el) el.innerHTML = html; }
+
+    function buildMarketsGrid() {
+      const grid = $('marketsGrid');
+      grid.innerHTML = '';
+      ASSETS.forEach((a) => {
+        const div = document.createElement('div');
+        div.id = 'mk-' + a.id;
+        div.className = 'glass-inner p-4 min-h-[11rem]';
+        div.innerHTML = `<div class="text-sm font-medium">${escapeHtml(a.name)}</div><div class="text-[11px] text-white/40">${escapeHtml(a.sub)}</div><div class="text-sm text-white/35 mt-6">Wird beim Aufklappen geladen…</div>`;
+        grid.appendChild(div);
+      });
+    }
+
+    async function loadMarkets() {
+      if (marketsBusy) return;
+      marketsBusy = true;
+      setBusy('marketsRefresh', $('marketsGrid'), true);
+      let failed = 0;
+      await Promise.allSettled(ASSETS.map(async (a) => {
+        try {
+          const d = a.kind === 'btc' ? await fetchBtc() : await fetchStock(a.symbol);
+          marketsData[a.id] = d;
+          setCard(a, cardHtml(a, d));
+        } catch (e) {
+          failed++;
+          if (!marketsData[a.id]) {
+            setCard(a, `<div class="text-sm font-medium">${escapeHtml(a.name)}</div><div class="text-[11px] text-white/40">${escapeHtml(a.sub)}</div><div class="text-xs text-white/40 mt-6">Kurs konnte nicht geladen werden.<br>Mit ↻ nochmal versuchen.</div>`);
+          }
+        }
+      }));
+      const u = $('marketsUpdated');
+      if (failed) { u.textContent = `${failed} von ${ASSETS.length} Kursen nicht verfügbar`; u.classList.add('text-brand-red'); }
+      else { u.textContent = 'Aktualisiert ' + hhmm(new Date()); u.classList.remove('text-brand-red'); }
+      setBusy('marketsRefresh', $('marketsGrid'), false);
+      marketsBusy = false;
+    }
+
+    buildMarketsGrid();
+    $('marketsGrid').classList.add('soft');
+    $('marketsRefresh').addEventListener('click', loadMarkets);
+    // Kurse werden erst geladen, wenn man das Fenster zum ersten Mal aufklappt
+    $('markets').addEventListener('toggle', () => {
+      if ($('markets').open && !marketsOpened) { marketsOpened = true; loadMarkets(); }
+    });
+  })();
+  </script>
+</body>
+</html>
